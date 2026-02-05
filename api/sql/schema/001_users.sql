@@ -1,3 +1,4 @@
+-- +goose Up
 CREATE TABLE users (
     id UUID PRIMARY KEY,
     created_at TIMESTAMP NOT NULL,
@@ -6,3 +7,6 @@ CREATE TABLE users (
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL
 );
+
+-- +goose Down
+DROP TABLE users;

@@ -7,34 +7,32 @@ package database
 
 import (
 	"context"
+	"database/sql"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/google/uuid"
 )
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, created_at, updated_at, username, email, password_hash)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, created_at, updated_at, username, email, password_hash
+VALUES (
+    gen_random_uuid(),
+    NOW(),
+    NOW(),
+    $1,
+    $2,
+    $3
+)
+RETURNING id, created_at, updated_at, username, email, password_hash, api_key, role
 `
 
 type CreateUserParams struct {
-	ID           pgtype.UUID      `json:"id"`
-	CreatedAt    pgtype.Timestamp `json:"created_at"`
-	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
-	Username     string           `json:"username"`
-	Email        string           `json:"email"`
-	PasswordHash string           `json:"password_hash"`
+	Username     string `json:"username"`
+	Email        string `json:"email"`
+	PasswordHash string `json:"password_hash"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUser,
-		arg.ID,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-		arg.Username,
-		arg.Email,
-		arg.PasswordHash,
-	)
+	row := q.db.QueryRowContext(ctx, createUser, arg.Username, arg.Email, arg.PasswordHash)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -43,6 +41,87 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Username,
 		&i.Email,
 		&i.PasswordHash,
+		&i.ApiKey,
+		&i.Role,
 	)
 	return i, err
+}
+
+const getUserByAPIKey = `-- name: GetUserByAPIKey :one
+SELECT id, created_at, updated_at, username, email, password_hash, api_key, role FROM users WHERE api_key = $1
+`
+
+func (q *Queries) GetUserByAPIKey(ctx context.Context, apiKey sql.NullString) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByAPIKey, apiKey)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.ApiKey,
+		&i.Role,
+	)
+	return i, err
+}
+
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, created_at, updated_at, username, email, password_hash, api_key, role FROM users WHERE id = $1
+`
+
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.ApiKey,
+		&i.Role,
+	)
+	return i, err
+}
+
+const getUserByUsername = `-- name: GetUserByUsername :one
+SELECT id, created_at, updated_at, username, email, password_hash, api_key, role FROM users WHERE username = $1
+`
+
+func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByUsername, username)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.ApiKey,
+		&i.Role,
+	)
+	return i, err
+}
+
+const updateAPIKey = `-- name: UpdateAPIKey :one
+UPDATE users 
+SET api_key = $2
+WHERE id = $1 
+RETURNING api_key
+`
+
+type UpdateAPIKeyParams struct {
+	ID     uuid.UUID      `json:"id"`
+	ApiKey sql.NullString `json:"api_key"`
+}
+
+func (q *Queries) UpdateAPIKey(ctx context.Context, arg UpdateAPIKeyParams) (sql.NullString, error) {
+	row := q.db.QueryRowContext(ctx, updateAPIKey, arg.ID, arg.ApiKey)
+	var api_key sql.NullString
+	err := row.Scan(&api_key)
+	return api_key, err
 }
