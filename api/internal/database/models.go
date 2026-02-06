@@ -11,6 +11,34 @@ import (
 	"github.com/google/uuid"
 )
 
+type Course struct {
+	ID          uuid.UUID `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+}
+
+type Lesson struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	CourseID  uuid.UUID `json:"course_id"`
+	Title     string    `json:"title"`
+	Content   string    `json:"content"`
+	Position  int32     `json:"position"`
+}
+
+type Task struct {
+	ID             uuid.UUID `json:"id"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	LessonID       uuid.UUID `json:"lesson_id"`
+	Description    string    `json:"description"`
+	ExpectedOutput string    `json:"expected_output"`
+	Command        string    `json:"command"`
+}
+
 type User struct {
 	ID           uuid.UUID      `json:"id"`
 	CreatedAt    time.Time      `json:"created_at"`
