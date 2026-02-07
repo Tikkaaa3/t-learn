@@ -8,6 +8,14 @@ import (
 	"github.com/google/uuid"
 )
 
+type CLIResponse struct {
+	ID    string `json:"id"`
+	Steps []struct {
+		Command        string `json:"command"`
+		ExpectedOutput string `json:"expected_output"`
+	} `json:"steps"`
+}
+
 type Handler struct {
 	DB *database.Queries
 }
@@ -44,26 +52,54 @@ func (h *Handler) GetLessons(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) GetTask(w http.ResponseWriter, r *http.Request) {
 	lessonIDStr := r.PathValue("lesson_id")
-
 	lessonID, err := uuid.Parse(lessonIDStr)
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("Invalid UUID format"))
 		return
 	}
 
+	// Fetch the Task (Parent)
 	task, err := h.DB.GetTaskByLessonID(r.Context(), lessonID)
 	if err != nil {
 		w.WriteHeader(404)
 		return
 	}
 
+	// Fetch the Steps (Children)
+	steps, err := h.DB.GetStepsByTaskID(r.Context(), task.ID)
+	if err != nil {
+		w.WriteHeader(500)
+		return
+	}
+
+	// Map Database Steps -> JSON Steps
+	var jsonSteps []struct {
+		Command        string `json:"command"`
+		ExpectedOutput string `json:"expected_output"`
+	}
+
+	for _, s := range steps {
+		jsonSteps = append(jsonSteps, struct {
+			Command        string `json:"command"`
+			ExpectedOutput string `json:"expected_output"`
+		}{
+			Command:        s.Command,
+			ExpectedOutput: s.ExpectedOutput,
+		})
+	}
+
+	// Send Response
+	response := CLIResponse{
+		ID:    task.ID.String(),
+		Steps: jsonSteps,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(task)
+	json.NewEncoder(w).Encode(response)
 }
 
 func (h *Handler) CompleteTask(w http.ResponseWriter, r *http.Request, user database.User) {
-	taskIDStr := r.PathValue("course_id")
+	taskIDStr := r.PathValue("task_id")
 
 	taskID, err := uuid.Parse(taskIDStr)
 	if err != nil {
