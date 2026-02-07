@@ -13,18 +13,12 @@ import (
 
 func MakeJWT(userID uuid.UUID, secret string) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id": userID,
+		"user_id": userID.String(),
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	tokenString, err := token.SignedString([]byte(secret))
-	if err != nil {
-		return "", err
-	}
-
-	return tokenString, nil
+	return token.SignedString([]byte(secret))
 }
 
 func ValidateJWT(tokenString, secret string) (uuid.UUID, error) {
@@ -41,12 +35,12 @@ func ValidateJWT(tokenString, secret string) (uuid.UUID, error) {
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		userIDStr, ok := claims["user_id"].(string)
 		if !ok {
-			return uuid.Nil, fmt.Errorf("user_id not found in token")
+			return uuid.Nil, fmt.Errorf("user_id not found or invalid format")
 		}
 
 		userID, err := uuid.Parse(userIDStr)
 		if err != nil {
-			return uuid.Nil, fmt.Errorf("invalid user_id format")
+			return uuid.Nil, fmt.Errorf("invalid UUID in token")
 		}
 
 		return userID, nil

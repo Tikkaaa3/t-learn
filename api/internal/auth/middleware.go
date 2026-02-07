@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"database/sql"
 	"net/http"
 	"os"
 
@@ -17,14 +18,26 @@ func (h *Handler) MiddlewareAuth(handler AuthedHandler) http.HandlerFunc {
 			return
 		}
 
-		// TODO: Load secret from env
-		userID, err := ValidateJWT(tokenString, os.Getenv("JWT_SECRET"))
+		// Try to look up User by API Key first (for CLI)
+		user, err := h.DB.GetUserByAPIKey(r.Context(), sql.NullString{String: tokenString, Valid: true})
+		if err == nil {
+			handler(w, r, user)
+			return
+		}
+
+		jwtSecret := os.Getenv("JWT_SECRET")
+		if jwtSecret == "" {
+			jwtSecret = "my-secret-key"
+		}
+
+		// Validate JWT
+		userID, err := ValidateJWT(tokenString, jwtSecret)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
-		user, err := h.DB.GetUserByID(r.Context(), userID)
+		user, err = h.DB.GetUserByID(r.Context(), userID)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
