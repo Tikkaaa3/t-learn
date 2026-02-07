@@ -41,3 +41,23 @@ func (h *Handler) GetLessons(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(lessons)
 }
+
+func (h *Handler) GetTask(w http.ResponseWriter, r *http.Request) {
+	lessonIDStr := r.PathValue("lesson_id")
+
+	lessonID, err := uuid.Parse(lessonIDStr)
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte("Invalid UUID format"))
+		return
+	}
+
+	task, err := h.DB.GetTaskByLessonID(r.Context(), lessonID)
+	if err != nil {
+		w.WriteHeader(404)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(task)
+}
