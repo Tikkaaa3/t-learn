@@ -35,7 +35,18 @@ WHERE course_id = $1
 ORDER BY "position" ASC;
 
 -- name: CreateTask :one
-INSERT INTO tasks (id, created_at, updated_at, lesson_id, description, expected_output, command)
+INSERT INTO tasks (id, created_at, updated_at, lesson_id, description)
+VALUES (
+    gen_random_uuid(),
+    NOW(),
+    NOW(),
+    $1,
+    $2
+)
+RETURNING *;
+
+-- name: CreateTaskStep :one
+INSERT INTO task_steps (id, created_at, updated_at, task_id, position, command, expected_output)
 VALUES (
     gen_random_uuid(),
     NOW(),
@@ -49,6 +60,11 @@ RETURNING *;
 
 -- name: GetTaskByLessonID :one
 SELECT * FROM tasks WHERE lesson_id = $1;
+
+-- name: GetStepsByTaskID :many
+SELECT * FROM task_steps 
+WHERE task_id = $1 
+ORDER BY position ASC;
 
 -- name: CompleteTask :one
 INSERT INTO task_completions (id, created_at, updated_at, user_id, task_id)

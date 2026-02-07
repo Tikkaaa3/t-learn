@@ -115,7 +115,37 @@ func (q *Queries) CreateLesson(ctx context.Context, arg CreateLessonParams) (Les
 }
 
 const createTask = `-- name: CreateTask :one
-INSERT INTO tasks (id, created_at, updated_at, lesson_id, description, expected_output, command)
+INSERT INTO tasks (id, created_at, updated_at, lesson_id, description)
+VALUES (
+    gen_random_uuid(),
+    NOW(),
+    NOW(),
+    $1,
+    $2
+)
+RETURNING id, created_at, updated_at, lesson_id, description
+`
+
+type CreateTaskParams struct {
+	LessonID    uuid.UUID `json:"lesson_id"`
+	Description string    `json:"description"`
+}
+
+func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error) {
+	row := q.db.QueryRowContext(ctx, createTask, arg.LessonID, arg.Description)
+	var i Task
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.LessonID,
+		&i.Description,
+	)
+	return i, err
+}
+
+const createTaskStep = `-- name: CreateTaskStep :one
+INSERT INTO task_steps (id, created_at, updated_at, task_id, position, command, expected_output)
 VALUES (
     gen_random_uuid(),
     NOW(),
@@ -125,32 +155,32 @@ VALUES (
     $3,
     $4
 )
-RETURNING id, created_at, updated_at, lesson_id, description, expected_output, command
+RETURNING id, task_id, position, command, expected_output, created_at, updated_at
 `
 
-type CreateTaskParams struct {
-	LessonID       uuid.UUID `json:"lesson_id"`
-	Description    string    `json:"description"`
-	ExpectedOutput string    `json:"expected_output"`
+type CreateTaskStepParams struct {
+	TaskID         uuid.UUID `json:"task_id"`
+	Position       int32     `json:"position"`
 	Command        string    `json:"command"`
+	ExpectedOutput string    `json:"expected_output"`
 }
 
-func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error) {
-	row := q.db.QueryRowContext(ctx, createTask,
-		arg.LessonID,
-		arg.Description,
-		arg.ExpectedOutput,
+func (q *Queries) CreateTaskStep(ctx context.Context, arg CreateTaskStepParams) (TaskStep, error) {
+	row := q.db.QueryRowContext(ctx, createTaskStep,
+		arg.TaskID,
+		arg.Position,
 		arg.Command,
+		arg.ExpectedOutput,
 	)
-	var i Task
+	var i TaskStep
 	err := row.Scan(
 		&i.ID,
+		&i.TaskID,
+		&i.Position,
+		&i.Command,
+		&i.ExpectedOutput,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.LessonID,
-		&i.Description,
-		&i.ExpectedOutput,
-		&i.Command,
 	)
 	return i, err
 }
@@ -243,8 +273,45 @@ func (q *Queries) GetLessonsByCourseID(ctx context.Context, courseID uuid.UUID) 
 	return items, nil
 }
 
+const getStepsByTaskID = `-- name: GetStepsByTaskID :many
+SELECT id, task_id, position, command, expected_output, created_at, updated_at FROM task_steps 
+WHERE task_id = $1 
+ORDER BY position ASC
+`
+
+func (q *Queries) GetStepsByTaskID(ctx context.Context, taskID uuid.UUID) ([]TaskStep, error) {
+	rows, err := q.db.QueryContext(ctx, getStepsByTaskID, taskID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TaskStep
+	for rows.Next() {
+		var i TaskStep
+		if err := rows.Scan(
+			&i.ID,
+			&i.TaskID,
+			&i.Position,
+			&i.Command,
+			&i.ExpectedOutput,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTaskByLessonID = `-- name: GetTaskByLessonID :one
-SELECT id, created_at, updated_at, lesson_id, description, expected_output, command FROM tasks WHERE lesson_id = $1
+SELECT id, created_at, updated_at, lesson_id, description FROM tasks WHERE lesson_id = $1
 `
 
 func (q *Queries) GetTaskByLessonID(ctx context.Context, lessonID uuid.UUID) (Task, error) {
@@ -256,8 +323,6 @@ func (q *Queries) GetTaskByLessonID(ctx context.Context, lessonID uuid.UUID) (Ta
 		&i.UpdatedAt,
 		&i.LessonID,
 		&i.Description,
-		&i.ExpectedOutput,
-		&i.Command,
 	)
 	return i, err
 }

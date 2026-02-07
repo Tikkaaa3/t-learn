@@ -30,13 +30,11 @@ type Lesson struct {
 }
 
 type Task struct {
-	ID             uuid.UUID `json:"id"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
-	LessonID       uuid.UUID `json:"lesson_id"`
-	Description    string    `json:"description"`
-	ExpectedOutput string    `json:"expected_output"`
-	Command        string    `json:"command"`
+	ID          uuid.UUID `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	LessonID    uuid.UUID `json:"lesson_id"`
+	Description string    `json:"description"`
 }
 
 type TaskCompletion struct {
@@ -45,6 +43,16 @@ type TaskCompletion struct {
 	UpdatedAt time.Time `json:"updated_at"`
 	UserID    uuid.UUID `json:"user_id"`
 	TaskID    uuid.UUID `json:"task_id"`
+}
+
+type TaskStep struct {
+	ID             uuid.UUID `json:"id"`
+	TaskID         uuid.UUID `json:"task_id"`
+	Position       int32     `json:"position"`
+	Command        string    `json:"command"`
+	ExpectedOutput string    `json:"expected_output"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 type User struct {
