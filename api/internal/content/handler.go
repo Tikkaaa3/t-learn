@@ -61,3 +61,26 @@ func (h *Handler) GetTask(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(task)
 }
+
+func (h *Handler) CompleteTask(w http.ResponseWriter, r *http.Request, user database.User) {
+	taskIDStr := r.PathValue("course_id")
+
+	taskID, err := uuid.Parse(taskIDStr)
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte("Invalid UUID format"))
+		return
+	}
+
+	_, err = h.DB.CompleteTask(r.Context(), database.CompleteTaskParams{
+		UserID: user.ID,
+		TaskID: taskID,
+	})
+	if err != nil {
+		w.WriteHeader(500)
+		return
+	}
+
+	w.WriteHeader(200)
+	w.Write([]byte(`{"status":"success"}`))
+}
