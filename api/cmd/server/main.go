@@ -55,5 +55,14 @@ func main() {
 	mux.HandleFunc("GET /lessons/{lesson_id}/task", contentHandler.GetTask)
 	mux.HandleFunc("POST /tasks/{task_id}/complete", authHandler.MiddlewareAuth(contentHandler.CompleteTask))
 
+	// Admin Routes
+	mux.HandleFunc("POST /admin/courses", authHandler.MiddlewareAdmin(contentHandler.CreateCourse))
+	mux.HandleFunc("POST /admin/courses/{course_id}/lessons", authHandler.MiddlewareAdmin(contentHandler.CreateLesson))
+	mux.HandleFunc("POST /admin/lessons/{lesson_id}/task", authHandler.MiddlewareAdmin(contentHandler.CreateTask))
+
+	mux.HandleFunc("DELETE /admin/courses/{course_id}", authHandler.MiddlewareAdmin(contentHandler.DeleteCourse))
+	mux.HandleFunc("DELETE /admin/lessons/{lesson_id}", authHandler.MiddlewareAdmin(contentHandler.DeleteLesson))
+	mux.HandleFunc("DELETE /admin/tasks/{task_id}", authHandler.MiddlewareAdmin(contentHandler.DeleteTask))
+
 	http.ListenAndServe(":8080", mux)
 }
