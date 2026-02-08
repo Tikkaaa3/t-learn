@@ -46,3 +46,14 @@ func (h *Handler) MiddlewareAuth(handler AuthedHandler) http.HandlerFunc {
 		handler(w, r, user)
 	}
 }
+
+func (h *Handler) MiddlewareAdmin(handler AuthedHandler) http.HandlerFunc {
+	return h.MiddlewareAuth(func(w http.ResponseWriter, r *http.Request, user database.User) {
+		if user.Role != "admin" {
+			w.WriteHeader(http.StatusForbidden) // 403 Forbidden
+			w.Write([]byte("Access denied: Admins only"))
+			return
+		}
+		handler(w, r, user)
+	})
+}
