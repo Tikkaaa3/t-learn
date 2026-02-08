@@ -185,6 +185,33 @@ func (q *Queries) CreateTaskStep(ctx context.Context, arg CreateTaskStepParams) 
 	return i, err
 }
 
+const deleteCourse = `-- name: DeleteCourse :exec
+DELETE FROM courses WHERE id = $1
+`
+
+func (q *Queries) DeleteCourse(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteCourse, id)
+	return err
+}
+
+const deleteLesson = `-- name: DeleteLesson :exec
+DELETE FROM lessons WHERE id = $1
+`
+
+func (q *Queries) DeleteLesson(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteLesson, id)
+	return err
+}
+
+const deleteTask = `-- name: DeleteTask :exec
+DELETE FROM tasks WHERE id = $1
+`
+
+func (q *Queries) DeleteTask(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteTask, id)
+	return err
+}
+
 const getCourse = `-- name: GetCourse :one
 SELECT id, created_at, updated_at, title, description FROM courses WHERE id = $1
 `

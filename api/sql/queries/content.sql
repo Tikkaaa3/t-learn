@@ -78,3 +78,12 @@ VALUES (
 -- If they already finished it, do nothing (don't crash)
 ON CONFLICT (user_id, task_id) DO NOTHING
 RETURNING *;
+
+-- name: DeleteCourse :exec
+DELETE FROM courses WHERE id = $1;
+
+-- name: DeleteLesson :exec
+DELETE FROM lessons WHERE id = $1;
+
+-- name: DeleteTask :exec
+DELETE FROM tasks WHERE id = $1;
