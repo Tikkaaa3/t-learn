@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const completeTask = `-- name: CompleteTask :one
+const completeTask = `-- name: CompleteTask :exec
 INSERT INTO task_completions (id, created_at, updated_at, user_id, task_id)
 VALUES (
     gen_random_uuid(),
@@ -21,7 +21,6 @@ VALUES (
     $2  -- Task ID
 )
 ON CONFLICT (user_id, task_id) DO NOTHING
-RETURNING id, created_at, updated_at, user_id, task_id
 `
 
 type CompleteTaskParams struct {
@@ -29,18 +28,9 @@ type CompleteTaskParams struct {
 	TaskID uuid.UUID `json:"task_id"`
 }
 
-// If they already finished it, do nothing (don't crash)
-func (q *Queries) CompleteTask(ctx context.Context, arg CompleteTaskParams) (TaskCompletion, error) {
-	row := q.db.QueryRowContext(ctx, completeTask, arg.UserID, arg.TaskID)
-	var i TaskCompletion
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.UserID,
-		&i.TaskID,
-	)
-	return i, err
+func (q *Queries) CompleteTask(ctx context.Context, arg CompleteTaskParams) error {
+	_, err := q.db.ExecContext(ctx, completeTask, arg.UserID, arg.TaskID)
+	return err
 }
 
 const createCourse = `-- name: CreateCourse :one
@@ -263,6 +253,25 @@ func (q *Queries) GetCourses(ctx context.Context) ([]Course, error) {
 	return items, nil
 }
 
+const getLesson = `-- name: GetLesson :one
+SELECT id, created_at, updated_at, course_id, title, content, position FROM lessons WHERE id = $1
+`
+
+func (q *Queries) GetLesson(ctx context.Context, id uuid.UUID) (Lesson, error) {
+	row := q.db.QueryRowContext(ctx, getLesson, id)
+	var i Lesson
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CourseID,
+		&i.Title,
+		&i.Content,
+		&i.Position,
+	)
+	return i, err
+}
+
 const getLessonsByCourseID = `-- name: GetLessonsByCourseID :many
 SELECT id, created_at, updated_at, course_id, title, content, position FROM lessons 
 WHERE course_id = $1 
@@ -286,6 +295,67 @@ func (q *Queries) GetLessonsByCourseID(ctx context.Context, courseID uuid.UUID) 
 			&i.Title,
 			&i.Content,
 			&i.Position,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getLessonsWithStatus = `-- name: GetLessonsWithStatus :many
+SELECT 
+    l.id, 
+    l.title, 
+    l.position,
+    l.course_id,
+    CASE 
+        WHEN tc.task_id IS NOT NULL THEN true 
+        ELSE false 
+    END as is_completed
+FROM lessons l
+LEFT JOIN tasks t ON t.lesson_id = l.id  -- <--- CHANGE TO 'LEFT JOIN'
+LEFT JOIN task_completions tc 
+    ON tc.task_id = t.id 
+    AND tc.user_id = $2
+WHERE l.course_id = $1
+ORDER BY l.position
+`
+
+type GetLessonsWithStatusParams struct {
+	CourseID uuid.UUID `json:"course_id"`
+	UserID   uuid.UUID `json:"user_id"`
+}
+
+type GetLessonsWithStatusRow struct {
+	ID          uuid.UUID `json:"id"`
+	Title       string    `json:"title"`
+	Position    int32     `json:"position"`
+	CourseID    uuid.UUID `json:"course_id"`
+	IsCompleted bool      `json:"is_completed"`
+}
+
+func (q *Queries) GetLessonsWithStatus(ctx context.Context, arg GetLessonsWithStatusParams) ([]GetLessonsWithStatusRow, error) {
+	rows, err := q.db.QueryContext(ctx, getLessonsWithStatus, arg.CourseID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetLessonsWithStatusRow
+	for rows.Next() {
+		var i GetLessonsWithStatusRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Position,
+			&i.CourseID,
+			&i.IsCompleted,
 		); err != nil {
 			return nil, err
 		}

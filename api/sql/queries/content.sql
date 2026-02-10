@@ -34,6 +34,27 @@ SELECT * FROM lessons
 WHERE course_id = $1 
 ORDER BY "position" ASC;
 
+-- name: GetLessonsWithStatus :many
+SELECT 
+    l.id, 
+    l.title, 
+    l.position,
+    l.course_id,
+    CASE 
+        WHEN tc.task_id IS NOT NULL THEN true 
+        ELSE false 
+    END as is_completed
+FROM lessons l
+LEFT JOIN tasks t ON t.lesson_id = l.id  -- <--- CHANGE TO 'LEFT JOIN'
+LEFT JOIN task_completions tc 
+    ON tc.task_id = t.id 
+    AND tc.user_id = $2
+WHERE l.course_id = $1
+ORDER BY l.position;
+
+-- name: GetLesson :one
+SELECT * FROM lessons WHERE id = $1;
+
 -- name: CreateTask :one
 INSERT INTO tasks (id, created_at, updated_at, lesson_id, description)
 VALUES (
@@ -66,7 +87,7 @@ SELECT * FROM task_steps
 WHERE task_id = $1 
 ORDER BY position ASC;
 
--- name: CompleteTask :one
+-- name: CompleteTask :exec
 INSERT INTO task_completions (id, created_at, updated_at, user_id, task_id)
 VALUES (
     gen_random_uuid(),
@@ -75,9 +96,7 @@ VALUES (
     $1, -- User ID
     $2  -- Task ID
 )
--- If they already finished it, do nothing (don't crash)
-ON CONFLICT (user_id, task_id) DO NOTHING
-RETURNING *;
+ON CONFLICT (user_id, task_id) DO NOTHING;
 
 -- name: DeleteCourse :exec
 DELETE FROM courses WHERE id = $1;
