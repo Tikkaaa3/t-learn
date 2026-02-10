@@ -9,11 +9,18 @@ import (
 )
 
 type CLIResponse struct {
-	ID    string `json:"id"`
-	Steps []struct {
-		Command        string `json:"command"`
-		ExpectedOutput string `json:"expected_output"`
-	} `json:"steps"`
+	LessonID        string `json:"lesson_id"`
+	LessonTitle     string `json:"lesson_title"`
+	LessonContent   string `json:"lesson_content"`
+	TaskID          string `json:"task_id"`
+	TaskDescription string `json:"task_description"`
+	Steps           []Step `json:"steps"`
+}
+
+type Step struct {
+	Position       int32  `json:"position"`
+	Command        string `json:"command"`
+	ExpectedOutput string `json:"expected_output"`
 }
 
 type Handler struct {
@@ -31,23 +38,41 @@ func (h *Handler) GetCourses(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(courses)
 }
 
-func (h *Handler) GetLessons(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetLessons(w http.ResponseWriter, r *http.Request, user database.User) {
 	courseIDStr := r.PathValue("course_id")
-
 	courseID, err := uuid.Parse(courseIDStr)
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("Invalid UUID format"))
 		return
 	}
 
-	lessons, err := h.DB.GetLessonsByCourseID(r.Context(), courseID)
+	lessons, err := h.DB.GetLessonsWithStatus(r.Context(), database.GetLessonsWithStatusParams{
+		CourseID: courseID,
+		UserID:   user.ID, // <--- We pass the logged-in user's ID here
+	})
 	if err != nil {
 		w.WriteHeader(500)
 		return
 	}
+
+	// Map response to JSON
+	type LessonResponse struct {
+		ID        uuid.UUID `json:"id"`
+		Title     string    `json:"title"`
+		Completed bool      `json:"completed"` // <--- New JSON field
+	}
+
+	response := make([]LessonResponse, len(lessons))
+	for i, l := range lessons {
+		response[i] = LessonResponse{
+			ID:        l.ID,
+			Title:     l.Title,
+			Completed: l.IsCompleted, // Map the boolean from SQL
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(lessons)
+	json.NewEncoder(w).Encode(response)
 }
 
 func (h *Handler) GetTask(w http.ResponseWriter, r *http.Request) {
@@ -58,40 +83,48 @@ func (h *Handler) GetTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch the Task (Parent)
-	task, err := h.DB.GetTaskByLessonID(r.Context(), lessonID)
+	// Fetch the Lesson (Title & Content)
+	lesson, err := h.DB.GetLesson(r.Context(), lessonID)
 	if err != nil {
 		w.WriteHeader(404)
+		w.Write([]byte(`{"error": "Lesson not found"}`))
 		return
 	}
 
-	// Fetch the Steps (Children)
+	// Fetch the Task
+	task, err := h.DB.GetTaskByLessonID(r.Context(), lessonID)
+	if err != nil {
+		// It's okay if a lesson has no task (maybe it's just reading)
+		// But for now, we return 404
+		w.WriteHeader(404)
+		w.Write([]byte(`{"error": "Task not found"}`))
+		return
+	}
+
+	// Fetch the Steps
 	steps, err := h.DB.GetStepsByTaskID(r.Context(), task.ID)
 	if err != nil {
 		w.WriteHeader(500)
 		return
 	}
 
-	// Map Database Steps -> JSON Steps
-	var jsonSteps []struct {
-		Command        string `json:"command"`
-		ExpectedOutput string `json:"expected_output"`
-	}
-
+	// Build the Response
+	jsonSteps := []Step{}
 	for _, s := range steps {
-		jsonSteps = append(jsonSteps, struct {
-			Command        string `json:"command"`
-			ExpectedOutput string `json:"expected_output"`
-		}{
+		jsonSteps = append(jsonSteps, Step{
+			Position:       s.Position,
 			Command:        s.Command,
 			ExpectedOutput: s.ExpectedOutput,
 		})
 	}
 
-	// Send Response
 	response := CLIResponse{
-		ID:    task.ID.String(),
-		Steps: jsonSteps,
+		LessonID:        lesson.ID.String(),
+		LessonTitle:     lesson.Title,
+		LessonContent:   lesson.Content, // The Markdown content
+		TaskID:          task.ID.String(),
+		TaskDescription: task.Description, // "Create a hello.go file..."
+		Steps:           jsonSteps,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -100,15 +133,13 @@ func (h *Handler) GetTask(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) CompleteTask(w http.ResponseWriter, r *http.Request, user database.User) {
 	taskIDStr := r.PathValue("task_id")
-
 	taskID, err := uuid.Parse(taskIDStr)
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("Invalid UUID format"))
 		return
 	}
 
-	_, err = h.DB.CompleteTask(r.Context(), database.CompleteTaskParams{
+	err = h.DB.CompleteTask(r.Context(), database.CompleteTaskParams{
 		UserID: user.ID,
 		TaskID: taskID,
 	})

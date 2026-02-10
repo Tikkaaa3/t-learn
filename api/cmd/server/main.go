@@ -51,7 +51,7 @@ func main() {
 
 	// Content Routes
 	mux.HandleFunc("GET /courses", contentHandler.GetCourses)
-	mux.HandleFunc("GET /courses/{course_id}/lessons", contentHandler.GetLessons)
+	mux.HandleFunc("GET /courses/{course_id}/lessons", authHandler.MiddlewareAuth(contentHandler.GetLessons))
 	mux.HandleFunc("GET /lessons/{lesson_id}/task", contentHandler.GetTask)
 	mux.HandleFunc("POST /tasks/{task_id}/complete", authHandler.MiddlewareAuth(contentHandler.CompleteTask))
 

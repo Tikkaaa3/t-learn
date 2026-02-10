@@ -45,11 +45,26 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type response struct {
-		Token string `json:"token"`
+	type UserResponse struct {
+		ID       string `json:"id"`
+		Username string `json:"username"`
+	}
+
+	type loginResponse struct {
+		Token string       `json:"token"`
+		User  UserResponse `json:"user"`
+	}
+
+	// Send back Token + User Info
+	response := loginResponse{
+		Token: token,
+		User: UserResponse{
+			ID:       user.ID.String(),
+			Username: user.Username,
+		},
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
-	json.NewEncoder(w).Encode(response{Token: token})
+	json.NewEncoder(w).Encode(response)
 }
