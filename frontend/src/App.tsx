@@ -3,18 +3,17 @@ import "./index.css";
 import { useTerminal } from "./hooks/useTerminal";
 
 function App() {
-  const { history, execute } = useTerminal();
+  // 1. Destructure promptLabel from the hook
+  const { history, execute, promptLabel } = useTerminal();
   const [input, setInput] = useState("");
 
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [history]);
 
-  // Keep focus
   const handleFocus = () => inputRef.current?.focus();
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -25,11 +24,7 @@ function App() {
   };
 
   return (
-    <div
-      className="terminal-container"
-      onClick={handleFocus}
-      style={{ padding: "20px", height: "100%", overflowY: "auto" }}
-    >
+    <div className="terminal-container" onClick={handleFocus}>
       <div className="history">
         {history.map((line) => (
           <div
@@ -38,6 +33,8 @@ function App() {
             style={{ marginBottom: "8px" }}
           >
             {line.type === "command" && (
+              // Optional: You can make this dynamic too, but keeping it '$'
+              // for history is often cleaner. Let's stick to '$' for history for now.
               <span style={{ color: "#fff", marginRight: "10px" }}>$</span>
             )}
             <span style={{ whiteSpace: "pre-wrap" }}>{line.content}</span>
@@ -45,11 +42,16 @@ function App() {
         ))}
       </div>
 
+      {/* The Active Input Line */}
       <div
         className="input-line"
         style={{ display: "flex", alignItems: "center" }}
       >
-        <span style={{ color: "#fff", marginRight: "10px" }}>$</span>
+        {/* 2. USE THE DYNAMIC PROMPT HERE */}
+        <span style={{ color: "#fff", marginRight: "10px" }}>
+          {promptLabel}
+        </span>
+
         <span>{input}</span>
         <span className="cursor"></span>
       </div>

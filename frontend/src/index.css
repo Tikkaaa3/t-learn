@@ -1,7 +1,7 @@
 :root {
-  --bg-color: #0d1117; /* GitHub Dark Dimmed */
-  --text-color: #00ff00; /* Classic Terminal Green */
-  --dim-color: #30363d; /* Border/Dim color */
+  --bg-color: #0d1117;
+  --text-color: #00ff00;
+  --dim-color: #30363d;
   --font-stack: "Courier New", Courier, monospace;
 }
 
@@ -11,14 +11,30 @@
   padding: 0;
 }
 
+/* FIX 1: Add html and #root to the height chain */
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* Lock the outer window scroll */
+}
+
 body {
   background-color: var(--bg-color);
   color: var(--text-color);
   font-family: var(--font-stack);
   font-size: 16px;
   line-height: 1.5;
-  height: 100vh;
-  overflow: hidden; /* Prevent body scroll, handle inside terminal */
+}
+
+/* FIX 2: Move terminal styles here and add bottom padding */
+.terminal-container {
+  height: 100%;
+  width: 100%;
+  padding: 20px;
+  padding-bottom: 50px; /* Extra space so input isn't glued to bottom */
+  overflow-y: auto; /* This triggers the scrollbar */
 }
 
 /* The Blinking Cursor */
@@ -41,7 +57,6 @@ body {
   animation: blink 1s step-end infinite;
 }
 
-/* Input needs to be invisible but functional */
 .hidden-input {
   position: absolute;
   opacity: 0;
