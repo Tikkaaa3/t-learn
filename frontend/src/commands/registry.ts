@@ -1,64 +1,410 @@
 import type { CommandDefinition } from "../types";
+import type { Course, Lesson } from "../api/content";
+import { loginUser, generateApiKey, registerUser } from "../api/auth";
+import {
+  getCourses,
+  getLessons,
+  getTask,
+  createCourse,
+  deleteCourse,
+  createLesson,
+  deleteLesson,
+} from "../api/content";
 
-// Placeholder Functions (I will connect these to API later)
+// --- GLOBAL STATE ---
+interface ShellState {
+  user: string | null;
+  path: string[]; // e.g. ["Go Mastery"]
+  cachedCourses: Course[];
+  cachedLessons: Lesson[];
+}
+
+// Initial State
+const state: ShellState = {
+  user: localStorage.getItem("t_learn_user") || null,
+  path: [],
+  cachedCourses: [],
+  cachedLessons: [],
+};
+
+// --- HELPER: Resolve ID by Exact ID or Fuzzy Name ---
+function resolveId(
+  query: string,
+  list: { id: string; title: string }[],
+): string | null {
+  // 1. Exact ID match?
+  if (list.find((item) => item.id === query)) return query;
+
+  // 2. Fuzzy Name match?
+  const lowerQuery = query.toLowerCase();
+  const found = list.find((item) =>
+    item.title.toLowerCase().includes(lowerQuery),
+  );
+  return found ? found.id : null;
+}
+
+// --- EXPORT FOR REACT UI ---
+export const getPrompt = () => {
+  if (state.path.length > 0) {
+    const currentDir = state.path[state.path.length - 1];
+    return `${currentDir} $`;
+  }
+  return "$";
+};
+
+// --- COMMAND DEFINITIONS ---
 
 const help: CommandDefinition = {
-  description: "List available commands",
+  description: "Show available commands",
   execute: async () => {
     return {
       type: "info",
       output: `Available commands:
-  help      - Show this message
-  clear     - Clear the terminal screen
-  login     - Log in to the platform
-  courses   - List available courses
-  whoami    - Show current user`,
+  help                          - Show this message
+  clear                         - Clear the terminal
+  register <user> <mail> <pass> - Create account
+  login <user> <pass>           - Log in
+  logout                        - Log out
+  whoami                        - Show current user
+  token                         - Generate CLI API Key
+  courses                       - List available courses
+  lessons <course_name>         - Enter a course
+  start <lesson_name>           - Start a lesson task`,
     };
+  },
+};
+
+const clear: CommandDefinition = {
+  description: "Clear terminal",
+  execute: async () => {
+    return { type: "clear", output: "" };
+  },
+};
+
+const register: CommandDefinition = {
+  description: "Create a new account",
+  execute: async (args) => {
+    if (args.length < 3)
+      return {
+        type: "error",
+        output: "Usage: register <username> <email> <password>",
+      };
+    const [username, email, password] = args;
+    try {
+      await registerUser(username, email, password);
+      return {
+        type: "success",
+        output: `Account created for ${username}!\nYou can now log in.`,
+      };
+    } catch (err: any) {
+      return { type: "error", output: `Registration failed: ${err.message}` };
+    }
   },
 };
 
 const login: CommandDefinition = {
-  description: "Log in to the platform",
+  description: "Log in",
   execute: async (args) => {
-    if (args.length < 2) {
-      return { type: "error", output: "Usage: login <username> <password>" };
+    if (args.length < 2)
+      return { type: "error", output: "Usage: login <user> <pass>" };
+    const [username, password] = args;
+    try {
+      const data = await loginUser(username, password);
+      localStorage.setItem("t_learn_token", data.token);
+
+      // Update State
+      state.user = username;
+      localStorage.setItem("t_learn_user", username);
+
+      return { type: "success", output: `Logged in as ${username}.` };
+    } catch (err: any) {
+      return { type: "error", output: `Login failed: ${err.message}` };
     }
-    // TODO: Connect to Real Backend
-    return {
-      type: "success",
-      output: `Mock login successful for user: ${args[0]}`,
-    };
   },
 };
 
-const courses: CommandDefinition = {
-  description: "List available courses",
+const logout: CommandDefinition = {
+  description: "Log out of the session",
   execute: async () => {
-    // TODO: Fetch from Backend
-    return {
-      type: "info",
-      output: `
-ID                                    | TITLE
---------------------------------------+----------------------
-550e8400-e29b-41d4-a716-446655440000 | Go HTTP Mastery
-770e8400-e29b-41d4-a716-446655441111 | Advanced SQL`,
-    };
+    // 1. Clear the storage
+    localStorage.removeItem("t_learn_token");
+    localStorage.removeItem("t_learn_user");
+
+    // 2. Reset the internal state
+    state.user = null;
+    state.path = []; // Optional: Reset path to root
+
+    return { type: "success", output: "Logged out successfully." };
   },
 };
 
 const whoami: CommandDefinition = {
   description: "Show current user",
   execute: async () => {
-    return { type: "info", output: "guest" };
+    return state.user
+      ? { type: "success", output: state.user }
+      : { type: "error", output: "Not logged in." };
   },
 };
 
-// The Registry Map
+const token: CommandDefinition = {
+  description: "Generate CLI API Key",
+  execute: async () => {
+    try {
+      const data = await generateApiKey();
+      return {
+        type: "success",
+        output: `API Key Generated Successfully!\n\n${data.api_key}\n\nUse this to authenticate your CLI tool.`,
+      };
+    } catch (err: any) {
+      return { type: "error", output: `Failed: ${err.message}` };
+    }
+  },
+};
 
+const courses: CommandDefinition = {
+  description: "List courses",
+  execute: async () => {
+    try {
+      const list = await getCourses();
+      state.cachedCourses = list;
+
+      // Reset path when listing root courses
+      state.path = [];
+
+      if (list.length === 0)
+        return { type: "info", output: "No courses found." };
+      const rows = list.map((c) => `• ${c.title}`).join("\n");
+      return { type: "info", output: `Available Courses:\n\n${rows}` };
+    } catch (err: any) {
+      return { type: "error", output: `Error: ${err.message}` };
+    }
+  },
+};
+
+const lessons: CommandDefinition = {
+  description: "Enter a course and list lessons",
+  execute: async (args) => {
+    if (args.length < 1)
+      return { type: "error", output: "Usage: lessons <course_name>" };
+    const query = args.join(" ");
+
+    // 1. Resolve ID
+    let courseId = resolveId(query, state.cachedCourses);
+
+    // 2. Fetch if missing
+    if (!courseId) {
+      try {
+        state.cachedCourses = await getCourses();
+        courseId = resolveId(query, state.cachedCourses);
+      } catch {}
+    }
+
+    if (!courseId)
+      return { type: "error", output: `Course '${query}' not found.` };
+
+    // 3. Update Path for Prompt
+    const courseObj = state.cachedCourses.find((c) => c.id === courseId);
+    if (courseObj) state.path = [courseObj.title];
+
+    try {
+      const list = await getLessons(courseId);
+      state.cachedLessons = list;
+      const rows = list
+        .map((l) => {
+          const mark = l.completed ? "[✓]" : "[ ]";
+          return `${mark} ${l.title}`;
+        })
+        .join("\n");
+      return {
+        type: "info",
+        output: `Lessons in ${courseObj?.title}:\n\n${rows}`,
+      };
+    } catch (err: any) {
+      return { type: "error", output: `Error: ${err.message}` };
+    }
+  },
+};
+
+const start: CommandDefinition = {
+  description: "Start a lesson",
+  execute: async (args) => {
+    if (args.length < 1)
+      return { type: "error", output: "Usage: start <lesson_name>" };
+    const query = args.join(" ");
+
+    const lessonId = resolveId(query, state.cachedLessons);
+    if (!lessonId)
+      return {
+        type: "error",
+        output: `Lesson '${query}' not found.\n(Did you run 'lessons <course>' first?)`,
+      };
+
+    try {
+      const data = await getTask(lessonId);
+
+      let output = `\n=== ${data.lesson_title.toUpperCase()} ===\n`;
+      output += `${data.lesson_content}\n\n`;
+      output += `--- YOUR TASK ---\n${data.task_description}\n\n`;
+
+      if (data.steps && data.steps.length > 0) {
+        data.steps.forEach((step) => {
+          output += `Step ${step.position}: Run '${step.command}'\n`;
+        });
+      }
+
+      output += `\n---------------------------------------\n`;
+      output += `To verify work, run:\n> t-cli ${data.lesson_id}\n`;
+
+      return { type: "info", output };
+    } catch (err: any) {
+      return { type: "error", output: `Failed to load task: ${err.message}` };
+    }
+  },
+};
+
+// --- ADMIN COMMANDS (SMART VERSIONS) ---
+
+const mkcourse: CommandDefinition = {
+  description: "Create a course (Admin)",
+  execute: async (args) => {
+    // Usage: mkcourse "Go Mastery" "Learn Go"
+    if (args.length < 2)
+      return {
+        type: "error",
+        output: 'Usage: mkcourse "<Title>" "<Description>"',
+      };
+
+    const [title, desc] = args;
+    try {
+      await createCourse(title, desc);
+      state.cachedCourses = await getCourses(); // Refresh cache immediately
+      return { type: "success", output: `Course "${title}" created.` };
+    } catch (err: any) {
+      return { type: "error", output: `Failed: ${err.message}` };
+    }
+  },
+};
+
+const rmcourse: CommandDefinition = {
+  description: "Delete a course by Name or ID (Admin)",
+  execute: async (args) => {
+    if (args.length < 1)
+      return { type: "error", output: "Usage: rmcourse <course_name_or_id>" };
+
+    const query = args.join(" "); // Handle names with spaces like "Go Mastery"
+
+    // 1. Ensure we have the list to look up names
+    if (state.cachedCourses.length === 0) {
+      try {
+        state.cachedCourses = await getCourses();
+      } catch (e) {}
+    }
+
+    // 2. Resolve Name -> ID
+    const courseId = resolveId(query, state.cachedCourses);
+
+    if (!courseId) {
+      return { type: "error", output: `Course '${query}' not found.` };
+    }
+
+    try {
+      await deleteCourse(courseId);
+      state.cachedCourses = await getCourses(); // Refresh cache
+      return { type: "success", output: `Course '${query}' deleted.` };
+    } catch (err: any) {
+      return { type: "error", output: `Failed: ${err.message}` };
+    }
+  },
+};
+
+const mklesson: CommandDefinition = {
+  description: "Create a lesson (Admin)",
+  execute: async (args) => {
+    // Usage: mklesson "Go Mastery" 1 "Intro" "Hello World"
+    if (args.length < 4)
+      return {
+        type: "error",
+        output:
+          'Usage: mklesson <course_name> <position> "<Title>" "<Content>"',
+      };
+
+    const [courseQuery, posStr, title, content] = args;
+    const position = parseInt(posStr);
+
+    if (isNaN(position))
+      return { type: "error", output: "Position must be a number." };
+
+    // 1. Resolve Course Name -> ID
+    // (We need to ensure cache exists, just like rmcourse)
+    if (state.cachedCourses.length === 0) {
+      try {
+        state.cachedCourses = await getCourses();
+      } catch (e) {}
+    }
+    const courseId = resolveId(courseQuery, state.cachedCourses);
+
+    if (!courseId)
+      return { type: "error", output: `Course '${courseQuery}' not found.` };
+
+    try {
+      await createLesson(courseId, title, content, position);
+      return {
+        type: "success",
+        output: `Lesson "${title}" created in '${courseQuery}'.`,
+      };
+    } catch (err: any) {
+      return { type: "error", output: `Failed: ${err.message}` };
+    }
+  },
+};
+
+const rmlesson: CommandDefinition = {
+  description: "Delete a lesson by Name or ID (Admin)",
+  execute: async (args) => {
+    if (args.length < 1)
+      return { type: "error", output: "Usage: rmlesson <lesson_name_or_id>" };
+
+    const query = args.join(" ");
+
+    // 1. Resolve Lesson Name -> ID
+    // Note: This relies on 'cachedLessons' being populated (user must have run 'lessons' command recently)
+    const lessonId = resolveId(query, state.cachedLessons);
+
+    if (!lessonId) {
+      return {
+        type: "error",
+        output: `Lesson '${query}' not found in current list.\n(Did you run 'lessons <course>' first?)`,
+      };
+    }
+
+    try {
+      await deleteLesson(lessonId);
+      // Optional: Remove it from the cache visually so it disappears immediately
+      state.cachedLessons = state.cachedLessons.filter(
+        (l) => l.id !== lessonId,
+      );
+      return { type: "success", output: `Lesson '${query}' deleted.` };
+    } catch (err: any) {
+      return { type: "error", output: `Failed: ${err.message}` };
+    }
+  },
+};
+
+// --- EXPORT COMMANDS MAP ---
 export const commands: Record<string, CommandDefinition> = {
   help,
+  clear,
+  register,
   login,
-  courses,
+  logout,
   whoami,
-  // 'clear' is handled specially in the hook
+  token,
+  courses,
+  lessons,
+  start,
+  mkcourse,
+  rmcourse,
+  mklesson,
+  rmlesson,
 };
