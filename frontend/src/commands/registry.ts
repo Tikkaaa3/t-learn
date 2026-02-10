@@ -59,7 +59,9 @@ const help: CommandDefinition = {
   execute: async () => {
     return {
       type: "info",
-      output: `Available commands:
+      output: `
+### Available Commands
+\`\`\`text
   help                          - Show this message
   clear                         - Clear the terminal
   register <user> <mail> <pass> - Create account
@@ -69,7 +71,9 @@ const help: CommandDefinition = {
   token                         - Generate CLI API Key
   courses                       - List available courses
   lessons <course_name>         - Enter a course
-  start <lesson_name>           - Start a lesson task`,
+  start <lesson_name>           - Start a lesson task
+\`\`\`
+`,
     };
   },
 };
@@ -152,9 +156,14 @@ const token: CommandDefinition = {
   execute: async () => {
     try {
       const data = await generateApiKey();
+
       return {
         type: "success",
-        output: `API Key Generated Successfully!\n\n${data.api_key}\n\nUse this to authenticate your CLI tool.`,
+        output:
+          `### 🔑 API Key Generated\n` +
+          `Use this token to authenticate your CLI tool:\n\n` +
+          `\`\`\`bash\nt-cli login ${data.api_key}\n\`\`\`\n` +
+          `_Keep this token safe!_`,
       };
     } catch (err: any) {
       return { type: "error", output: `Failed: ${err.message}` };
@@ -163,98 +172,119 @@ const token: CommandDefinition = {
 };
 
 const courses: CommandDefinition = {
-  description: "List courses",
+  description: "List available courses",
   execute: async () => {
     try {
-      const list = await getCourses();
-      state.cachedCourses = list;
+      const courses = await getCourses();
+      state.cachedCourses = courses;
 
-      // Reset path when listing root courses
-      state.path = [];
-
-      if (list.length === 0)
+      if (courses.length === 0)
         return { type: "info", output: "No courses found." };
-      const rows = list.map((c) => `• ${c.title}`).join("\n");
-      return { type: "info", output: `Available Courses:\n\n${rows}` };
+
+      const list = courses
+        .map((c) => `- **${c.title}**`) // Bold the title
+        .join("\n");
+
+      return { type: "info", output: `### Available Courses:\n${list}` };
     } catch (err: any) {
-      return { type: "error", output: `Error: ${err.message}` };
+      return {
+        type: "error",
+        output: `Failed to fetch courses: ${err.message}`,
+      };
     }
   },
 };
 
 const lessons: CommandDefinition = {
-  description: "Enter a course and list lessons",
+  description: "List lessons in a course",
   execute: async (args) => {
     if (args.length < 1)
       return { type: "error", output: "Usage: lessons <course_name>" };
-    const query = args.join(" ");
 
-    // 1. Resolve ID
-    let courseId = resolveId(query, state.cachedCourses);
+    const courseQuery = args.join(" "); // Handle "Rust Basics"
 
-    // 2. Fetch if missing
-    if (!courseId) {
+    // Ensure cache
+    if (state.cachedCourses.length === 0) {
       try {
         state.cachedCourses = await getCourses();
-        courseId = resolveId(query, state.cachedCourses);
-      } catch {}
+      } catch (e) {}
     }
 
+    const courseId = resolveId(courseQuery, state.cachedCourses);
     if (!courseId)
-      return { type: "error", output: `Course '${query}' not found.` };
-
-    // 3. Update Path for Prompt
-    const courseObj = state.cachedCourses.find((c) => c.id === courseId);
-    if (courseObj) state.path = [courseObj.title];
+      return { type: "error", output: `Course '${courseQuery}' not found.` };
 
     try {
-      const list = await getLessons(courseId);
-      state.cachedLessons = list;
-      const rows = list
+      const lessons = await getLessons(courseId);
+      state.cachedLessons = lessons;
+
+      if (lessons.length === 0)
+        return { type: "info", output: `No lessons in '${courseQuery}'.` };
+
+      // FIX: Use Markdown List with Checkboxes
+      const list = lessons
         .map((l) => {
-          const mark = l.completed ? "[✓]" : "[ ]";
-          return `${mark} ${l.title}`;
+          const mark = l.completed ? "x" : " "; // x for done, space for todo
+          return `- [${mark}] ${l.title}`;
         })
         .join("\n");
+
       return {
         type: "info",
-        output: `Lessons in ${courseObj?.title}:\n\n${rows}`,
+        output: `### Lessons in ${courseQuery}:\n${list}`,
       };
     } catch (err: any) {
-      return { type: "error", output: `Error: ${err.message}` };
+      return { type: "error", output: `Failed: ${err.message}` };
     }
   },
 };
 
 const start: CommandDefinition = {
-  description: "Start a lesson",
+  description: "Start a lesson task",
   execute: async (args) => {
     if (args.length < 1)
       return { type: "error", output: "Usage: start <lesson_name>" };
+
     const query = args.join(" ");
 
+    // 1. Resolve Lesson ID
     const lessonId = resolveId(query, state.cachedLessons);
-    if (!lessonId)
+    if (!lessonId) {
       return {
         type: "error",
         output: `Lesson '${query}' not found.\n(Did you run 'lessons <course>' first?)`,
       };
+    }
 
     try {
+      // 2. Use your EXISTING getTask function
       const data = await getTask(lessonId);
 
-      let output = `\n=== ${data.lesson_title.toUpperCase()} ===\n`;
+      // 3. Build Rich Markdown Output
+      let output = `# ${data.lesson_title}\n\n`;
+
+      // The content (includes the CLI Helper we added in the seeder)
       output += `${data.lesson_content}\n\n`;
-      output += `--- YOUR TASK ---\n${data.task_description}\n\n`;
+
+      // --- Task Section ---
+      output += `## 🎯 Your Task\n`;
+      output += `${data.task_description}\n\n`;
 
       if (data.steps && data.steps.length > 0) {
-        data.steps.forEach((step) => {
-          output += `Step ${step.position}: Run '${step.command}'\n`;
+        output += `**Steps to execute:**\n`;
+        data.steps.forEach((step: any) => {
+          // Render commands as inline code blocks
+          output += `${step.position}. \`${step.command}\`\n`;
         });
       }
 
-      output += `\n---------------------------------------\n`;
-      output += `To verify work, run:\n> t-cli ${data.lesson_id}\n`;
+      // --- Verification Section ---
+      output += `\n---\n`;
+      output += `### ✅ Verification\n`;
+      output += `Run this command to check your work:\n`;
+
+      // The Copy-Paste Block
+      output += `\`\`\`bash\nt-cli ${data.lesson_id}\n\`\`\``;
 
       return { type: "info", output };
     } catch (err: any) {
