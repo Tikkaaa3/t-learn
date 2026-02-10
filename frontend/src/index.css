@@ -65,3 +65,65 @@ body {
   height: 0;
   width: 0;
 }
+
+/* Markdown Styling for Terminal */
+.markdown-output {
+  line-height: 1.6;
+  color: #cccccc; /* Slightly softer white for text */
+}
+
+.markdown-output h1,
+.markdown-output h2,
+.markdown-output h3 {
+  color: #fff;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid #333; /* Adds a nice divider */
+  padding-bottom: 0.2rem;
+}
+
+.markdown-output h1 {
+  font-size: 1.5em;
+  text-transform: uppercase;
+  color: #00ff00;
+}
+.markdown-output h2 {
+  font-size: 1.2em;
+}
+
+.markdown-output p {
+  margin-bottom: 0.8rem;
+}
+
+.markdown-output ul {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.markdown-output li {
+  margin-bottom: 0.2rem;
+}
+
+/* Code Blocks */
+.markdown-output pre {
+  background: #161b22; /* Darker background for code */
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid #30363d;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+
+.markdown-output code {
+  font-family: "Courier New", Courier, monospace;
+  background: rgba(110, 118, 129, 0.4);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.markdown-output pre code {
+  background: transparent; /* Reset background inside blocks */
+  padding: 0;
+  color: #e6edf3;
+}
