@@ -64,5 +64,32 @@ func main() {
 	mux.HandleFunc("DELETE /admin/lessons/{lesson_id}", authHandler.MiddlewareAdmin(contentHandler.DeleteLesson))
 	mux.HandleFunc("DELETE /admin/tasks/{task_id}", authHandler.MiddlewareAdmin(contentHandler.DeleteTask))
 
-	http.ListenAndServe(":8080", mux)
+	log.Println("Server starting on :8080")
+	err = http.ListenAndServe(":8080", enableCORS(mux))
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+// enableCORS adds headers to allow the React frontend to communicate with this server
+func enableCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Allow requests from specific frontend origin
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173") // Vite default port
+
+		// Allow specific methods (GET, POST, etc.)
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+
+		// Allow specific headers (Content-Type for JSON, Authorization for Tokens)
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// Handle "Preflight" requests
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// Pass the request to the real handler
+		next.ServeHTTP(w, r)
+	})
 }
