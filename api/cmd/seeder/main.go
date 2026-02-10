@@ -82,99 +82,236 @@ func main() {
 
 	// Define Curriculum
 	curriculum := []CourseSeed{
+		// ==========================================
+		// PYTHON BASICS
+		// ==========================================
 		{
 			Title:       "Python Basics",
-			Description: "Start your journey with Python 3.",
+			Description: "Start your journey with Python 3. Learn syntax, variables, and loops.",
 			Lessons: []LessonSeed{
 				{
-					Title:   "Hello Python",
-					Content: "# Hello World\nCreate a file named `main.py` that prints exactly `Hello Python`.",
+					Title: "Hello Python",
+					Content: `
+### The Print Function
+In Python, the ` + "`print()`" + ` function is used to send data to the standard output (your terminal). It is one of the most fundamental tools for debugging and user interaction.
+
+#### Syntax
+` + "```python" + `
+print("Your message here")
+` + "```" + `
+
+Strings in Python can be enclosed in either single quotes ('...') or double quotes ("...").
+
+#### Example
+` + "```python" + `
+print("Hello World")
+print('Python is fun')
+` + "```" + `
+`,
 					TaskSeed: TaskSeed{
-						Description:    "Create main.py and print 'Hello Python'",
+						Description:    "Create a file named `main.py`. Inside it, write a script that outputs exactly `Hello Python`.",
 						Command:        "python3 main.py",
 						ExpectedOutput: "Hello Python",
 					},
 				},
 				{
-					Title:   "Simple Math",
-					Content: "# Variables\nCreate a file `math.py`. Print the result of `10 + 5`.",
+					Title: "Variables & Math",
+					Content: `
+### Variables
+A variable is a container for storing data values. Unlike other languages, Python has no command for declaring a variable. A variable is created the moment you first assign a value to it.
+
+#### Example
+` + "```python" + `
+x = 5
+y = "John"
+print(x)
+` + "```" + `
+
+### Arithmetic Operators
+Python supports standard math operators:
+* ` + "`+`" + ` Addition
+* ` + "`-`" + ` Subtraction
+* ` + "`*`" + ` Multiplication
+* ` + "`/`" + ` Division
+
+`,
 					TaskSeed: TaskSeed{
-						Description:    "Create math.py and print the integer 15",
+						Description:    "Create a file named `math.py`. Calculate `10 + 5` and print the result (it should be 15).",
 						Command:        "python3 math.py",
 						ExpectedOutput: "15",
 					},
 				},
 				{
-					Title:   "Loops",
-					Content: "# Loops\nCreate `loop.py`. Write a loop that prints `Iteration` 3 times.",
+					Title: "For Loops",
+					Content: `
+### The For Loop
+A ` + "`for`" + ` loop is used for iterating over a sequence (that is either a list, a tuple, a dictionary, a set, or a string).
+
+To loop a specific number of times, we can use the ` + "`range()`" + ` function.
+
+#### Syntax
+` + "```python" + `
+for i in range(5):
+    print(i)
+` + "```" + `
+
+*Note: ` + "`range(5)`" + ` generates numbers from 0 to 4 (5 is exclusive).*
+`,
 					TaskSeed: TaskSeed{
-						Description:    "Create loop.py that prints 'Iteration' on 3 separate lines",
+						Description:    "Create `loop.py`. Write a loop that prints the word `Iteration` exactly 3 times (on 3 separate lines).",
 						Command:        "python3 loop.py",
 						ExpectedOutput: "Iteration\nIteration\nIteration",
 					},
 				},
 			},
 		},
+
+		// ==========================================
+		// GO BASICS
+		// ==========================================
 		{
 			Title:       "Go Basics",
-			Description: "Master the fundamentals of Golang.",
+			Description: "Master the fundamentals of Golang: Static typing, packages, and compilation.",
 			Lessons: []LessonSeed{
 				{
-					Title:   "Hello Go",
-					Content: "# Go Setup\nCreate a `main.go` file with package main. Print `Hello Go`.",
+					Title: "Hello Go",
+					Content: `
+### Structure of a Go Program
+Every runnable Go program starts with a package declaration.
+
+1.  **Package Declaration:** ` + "`package main`" + ` tells the Go compiler that this file should compile as an executable program rather than a shared library.
+2.  **Import:** ` + "`import \"fmt\"`" + ` brings in the formatting package (contains ` + "`Println`" + `).
+3.  **Main Function:** ` + "`func main() { ... }`" + ` is the entry point where the program starts running.
+
+#### Example
+` + "```go" + `
+package main
+import "fmt"
+
+func main() {
+    fmt.Println("Hi there!")
+}
+` + "```" + `
+`,
 					TaskSeed: TaskSeed{
-						Description:    "Create main.go and print 'Hello Go'",
+						Description:    "Create `main.go`. Write a valid Go program that prints `Hello Go` to the console.",
 						Command:        "go run main.go",
 						ExpectedOutput: "Hello Go",
 					},
 				},
 				{
-					Title:   "Integers",
-					Content: "# Types\nCreate `nums.go`. Declare an integer `x = 42` and print it.",
+					Title: "Integers & Variables",
+					Content: `
+### Declaring Variables
+Go is statically typed. You can declare variables in two ways:
+
+**1. Long Syntax (var keyword)**
+` + "```go" + `
+var x int = 10
+` + "```" + `
+
+**2. Short Syntax (Type Inference)**
+Inside functions, you can use ` + "`:=`" + ` to let Go guess the type.
+` + "```go" + `
+y := 20 // Go knows this is an int
+` + "```" + `
+`,
 					TaskSeed: TaskSeed{
-						Description:    "Create nums.go and print 42",
+						Description:    "Create `nums.go`. Declare an integer variable equal to `42` and print it using `fmt.Println`.",
 						Command:        "go run nums.go",
 						ExpectedOutput: "42",
 					},
 				},
 				{
-					Title:   "Functions",
-					Content: "# Functions\nCreate `funcs.go`. Create a function `greet()` that prints `Greetings` and call it from main.",
+					Title: "Functions",
+					Content: `
+### Functions
+A function is a block of code which only runs when it is called. You can pass data, known as parameters, into a function.
+
+#### Syntax
+` + "```go" + `
+func functionName() {
+  // code to be executed
+}
+` + "```" + `
+
+You must call the function from ` + "`main`" + ` for it to run.
+`,
 					TaskSeed: TaskSeed{
-						Description:    "Create funcs.go using a helper function",
+						Description:    "Create `funcs.go`. Define a function named `greet()` that prints `Greetings`. Call it from the main function.",
 						Command:        "go run funcs.go",
 						ExpectedOutput: "Greetings",
 					},
 				},
 			},
 		},
+
+		// ==========================================
+		// RUST BASICS
+		// ==========================================
 		{
 			Title:       "Rust Basics",
-			Description: "Blazing fast memory safety.",
+			Description: "Learn memory safety and modern systems programming with Rust.",
 			Lessons: []LessonSeed{
 				{
-					Title:   "Hello Rust",
-					Content: "# Rust Start\nCreate `main.rs`. Use `println!` to print `Hello Rust`.",
+					Title: "Hello Rust",
+					Content: `
+### Macros vs Functions
+In Rust, ` + "`main`" + ` is the entry point.
+You print to the screen using ` + "`println!`" + `.
+
+Notice the **exclamation mark** (` + "`!`" + `)? This means it is a **Macro**, not a standard function. Macros write code for you at compile time.
+
+#### Example
+` + "```rust" + `
+fn main() {
+    println!("Hello World");
+}
+` + "```" + `
+`,
 					TaskSeed: TaskSeed{
-						Description:    "Create main.rs, compile it, and run it.",
+						Description:    "Create `main.rs`. Write a program that prints `Hello Rust`.",
 						Command:        "rustc main.rs && ./main",
 						ExpectedOutput: "Hello Rust",
 					},
 				},
 				{
-					Title:   "Variables",
-					Content: "# Let\nCreate `vars.rs`. Define `let x = 100;` and print `{}`.",
+					Title: "Variables (Let)",
+					Content: `
+### Variable Binding
+In Rust, we use the ` + "`let`" + ` keyword to bind a value to a name.
+
+` + "```rust" + `
+fn main() {
+    let x = 5;
+    println!("{}", x); 
+}
+` + "```" + `
+
+**Note:** The ` + "`{}`" + ` is a placeholder. Rust replaces it with the value of ` + "`x`" + `.
+`,
 					TaskSeed: TaskSeed{
-						Description:    "Create vars.rs and print 100",
+						Description:    "Create `vars.rs`. Bind the value `100` to a variable named `x` and print it.",
 						Command:        "rustc vars.rs && ./vars",
 						ExpectedOutput: "100",
 					},
 				},
 				{
-					Title:   "Mutability",
-					Content: "# Mut\nCreate `mut.rs`. Define `let mut y = 1;`, change it to 2, and print it.",
+					Title: "Mutability",
+					Content: `
+### Immutable by Default
+In Rust, variables are **immutable** by default. Once a value is bound to a name, you can't change it.
+
+To make a variable changeable, you must add ` + "`mut`" + `.
+
+#### Example
+` + "```rust" + `
+let mut x = 5;
+x = 6; // This is allowed because of 'mut'
+` + "```" + `
+`,
 					TaskSeed: TaskSeed{
-						Description:    "Create mut.rs using mutable variables",
+						Description:    "Create `mut.rs`. Define a mutable variable `y` starting at `1`. Change it to `2`, then print the final value.",
 						Command:        "rustc mut.rs && ./mut",
 						ExpectedOutput: "2",
 					},
