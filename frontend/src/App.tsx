@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect } from "react";
-import Markdown from "react-markdown"; // <--- 1. Import Markdown
+import Markdown from "react-markdown";
 import "./index.css";
 import { useTerminal } from "./hooks/useTerminal";
 
 function App() {
-  const { history, execute, promptLabel } = useTerminal();
+  const { history, execute, promptLabel, commandHistory } = useTerminal();
+
   const [input, setInput] = useState("");
+  // Pointer tracks our position in history (null = typing new command)
+  const [historyPointer, setHistoryPointer] = useState<number | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -20,6 +23,37 @@ function App() {
     if (e.key === "Enter") {
       execute(input);
       setInput("");
+      setHistoryPointer(null); // Reset pointer on submit
+    }
+
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (commandHistory.length === 0) return;
+
+      // Calculate new index: If null, start at end. Else go back 1.
+      const newIndex =
+        historyPointer === null
+          ? commandHistory.length - 1
+          : Math.max(0, historyPointer - 1);
+
+      setHistoryPointer(newIndex);
+      setInput(commandHistory[newIndex]);
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (historyPointer === null) return; // Already at bottom
+
+      if (historyPointer < commandHistory.length - 1) {
+        // Go forward 1
+        const newIndex = historyPointer + 1;
+        setHistoryPointer(newIndex);
+        setInput(commandHistory[newIndex]);
+      } else {
+        // We reached the end, clear input
+        setHistoryPointer(null);
+        setInput("");
+      }
     }
   };
 
@@ -32,15 +66,12 @@ function App() {
             className={`line ${line.type}`}
             style={{ marginBottom: "8px" }}
           >
-            {/* CONDITIONAL RENDERING */}
             {line.type === "command" ? (
-              // 1. User Command: Render as plain text with '$'
               <>
                 <span style={{ color: "#fff", marginRight: "10px" }}>$</span>
                 <span style={{ whiteSpace: "pre-wrap" }}>{line.content}</span>
               </>
             ) : (
-              // 2. System Output: Render as Markdown
               <div className="markdown-output">
                 <Markdown>{line.content}</Markdown>
               </div>
@@ -49,7 +80,6 @@ function App() {
         ))}
       </div>
 
-      {/* Input Line */}
       <div
         className="input-line"
         style={{ display: "flex", alignItems: "center" }}

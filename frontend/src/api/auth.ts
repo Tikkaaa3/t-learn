@@ -31,8 +31,6 @@ export async function loginUser(
 }
 
 export async function generateApiKey(): Promise<ApiKeyResponse> {
-  // This endpoint is protected, but apiClient automatically attaches your
-  // login token from localStorage, so it will pass the MiddlewareAuth check.
   return apiClient<ApiKeyResponse>("/auth/token", {
     method: "POST",
   });

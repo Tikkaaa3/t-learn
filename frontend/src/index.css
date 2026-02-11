@@ -11,7 +11,6 @@
   padding: 0;
 }
 
-/* FIX 1: Add html and #root to the height chain */
 html,
 body,
 #root {
@@ -28,7 +27,6 @@ body {
   line-height: 1.5;
 }
 
-/* FIX 2: Move terminal styles here and add bottom padding */
 .terminal-container {
   height: 100%;
   width: 100%;

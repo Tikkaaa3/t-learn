@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import type { HistoryLine, LineType } from "../types";
-import { commands, getPrompt } from "../commands/registry"; // <--- 1. Import getPrompt
+import { commands, getPrompt } from "../commands/registry";
 
 export const useTerminal = () => {
   const [history, setHistory] = useState<HistoryLine[]>([
@@ -11,7 +11,9 @@ export const useTerminal = () => {
     },
   ]);
 
-  // 2. Add state for the prompt label (Initialize with current global state)
+  // New State for Command History
+  const [commandHistory, setCommandHistory] = useState<string[]>([]);
+
   const [promptLabel, setPromptLabel] = useState(getPrompt());
 
   const pushToHistory = (content: string, type: LineType = "info") => {
@@ -24,19 +26,18 @@ export const useTerminal = () => {
   const execute = useCallback(async (commandString: string) => {
     if (!commandString.trim()) return;
 
-    // Echo the command (We use the *current* promptLabel here effectively in the UI)
+    // Save to Command History
+    setCommandHistory((prev) => [...prev, commandString]);
+
     pushToHistory(commandString, "command");
 
-    // NEW: Regex to match spaces BUT ignore spaces inside quotes
+    // Regex parsing and command execution logic stays the same
     const parts = commandString.match(/(?:[^\s"]+|"[^"]*")+/g);
-
     if (!parts) return;
+
     const cmdName = parts[0].toLowerCase();
-    // Remove quotes from args (e.g., "Hello World" -> Hello World)
     const args = parts.slice(1).map((arg) => {
-      if (arg.startsWith('"') && arg.endsWith('"')) {
-        return arg.slice(1, -1);
-      }
+      if (arg.startsWith('"') && arg.endsWith('"')) return arg.slice(1, -1);
       return arg;
     });
 
@@ -46,7 +47,6 @@ export const useTerminal = () => {
     }
 
     const commandDef = commands[cmdName];
-
     if (commandDef) {
       try {
         const response = await commandDef.execute(args);
@@ -61,16 +61,14 @@ export const useTerminal = () => {
       );
     }
 
-    // 3. FORCE UPDATE PROMPT
-    // After the command finishes (e.g., 'lessons' updates the path),
-    // we fetch the new string from the registry.
     setPromptLabel(getPrompt());
   }, []);
 
   return {
     history,
     execute,
-    promptLabel, // <--- 4. Export it so App.tsx can use it
+    promptLabel,
+    commandHistory,
     clear: () => setHistory([]),
   };
 };

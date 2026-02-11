@@ -32,10 +32,10 @@ function resolveId(
   query: string,
   list: { id: string; title: string }[],
 ): string | null {
-  // 1. Exact ID match?
+  // Exact ID match?
   if (list.find((item) => item.id === query)) return query;
 
-  // 2. Fuzzy Name match?
+  // Fuzzy Name match?
   const lowerQuery = query.toLowerCase();
   const found = list.find((item) =>
     item.title.toLowerCase().includes(lowerQuery),
@@ -130,11 +130,11 @@ const login: CommandDefinition = {
 const logout: CommandDefinition = {
   description: "Log out of the session",
   execute: async () => {
-    // 1. Clear the storage
+    // Clear the storage
     localStorage.removeItem("t_learn_token");
     localStorage.removeItem("t_learn_user");
 
-    // 2. Reset the internal state
+    // Reset the internal state
     state.user = null;
     state.path = []; // Optional: Reset path to root
 
@@ -221,7 +221,6 @@ const lessons: CommandDefinition = {
       if (lessons.length === 0)
         return { type: "info", output: `No lessons in '${courseQuery}'.` };
 
-      // FIX: Use Markdown List with Checkboxes
       const list = lessons
         .map((l) => {
           const mark = l.completed ? "x" : " "; // x for done, space for todo
@@ -247,7 +246,7 @@ const start: CommandDefinition = {
 
     const query = args.join(" ");
 
-    // 1. Resolve Lesson ID
+    // Resolve Lesson ID
     const lessonId = resolveId(query, state.cachedLessons);
     if (!lessonId) {
       return {
@@ -257,10 +256,10 @@ const start: CommandDefinition = {
     }
 
     try {
-      // 2. Use your EXISTING getTask function
+      // Use your EXISTING getTask function
       const data = await getTask(lessonId);
 
-      // 3. Build Rich Markdown Output
+      // Build Rich Markdown Output
       let output = `# ${data.lesson_title}\n\n`;
 
       // The content (includes the CLI Helper we added in the seeder)
@@ -324,14 +323,14 @@ const rmcourse: CommandDefinition = {
 
     const query = args.join(" "); // Handle names with spaces like "Go Mastery"
 
-    // 1. Ensure we have the list to look up names
+    // Ensure we have the list to look up names
     if (state.cachedCourses.length === 0) {
       try {
         state.cachedCourses = await getCourses();
       } catch (e) {}
     }
 
-    // 2. Resolve Name -> ID
+    // Resolve Name -> ID
     const courseId = resolveId(query, state.cachedCourses);
 
     if (!courseId) {
@@ -365,8 +364,8 @@ const mklesson: CommandDefinition = {
     if (isNaN(position))
       return { type: "error", output: "Position must be a number." };
 
-    // 1. Resolve Course Name -> ID
-    // (We need to ensure cache exists, just like rmcourse)
+    // Resolve Course Name -> ID
+    // We need to ensure cache exists, just like rmcourse
     if (state.cachedCourses.length === 0) {
       try {
         state.cachedCourses = await getCourses();
@@ -397,8 +396,7 @@ const rmlesson: CommandDefinition = {
 
     const query = args.join(" ");
 
-    // 1. Resolve Lesson Name -> ID
-    // Note: This relies on 'cachedLessons' being populated (user must have run 'lessons' command recently)
+    // Resolve Lesson Name -> ID
     const lessonId = resolveId(query, state.cachedLessons);
 
     if (!lessonId) {
@@ -410,7 +408,6 @@ const rmlesson: CommandDefinition = {
 
     try {
       await deleteLesson(lessonId);
-      // Optional: Remove it from the cache visually so it disappears immediately
       state.cachedLessons = state.cachedLessons.filter(
         (l) => l.id !== lessonId,
       );
