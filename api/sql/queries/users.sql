@@ -24,3 +24,12 @@ UPDATE users
 SET api_key = $2
 WHERE id = $1 
 RETURNING api_key;
+
+-- name: GetUserStats :one
+SELECT 
+    u.username,
+    COUNT(tc.id) as completed_tasks
+FROM users u
+LEFT JOIN task_completions tc ON u.id = tc.user_id
+WHERE u.id = $1
+GROUP BY u.username;

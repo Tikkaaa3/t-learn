@@ -48,6 +48,7 @@ func main() {
 		w.Write([]byte("Hello, " + user.Username))
 	}))
 	mux.HandleFunc("POST /auth/token", authHandler.MiddlewareAuth(authHandler.GenerateAPIKey))
+	mux.HandleFunc("GET /auth/stats", authHandler.MiddlewareAuth(authHandler.GetStats))
 
 	// Content Routes
 	mux.HandleFunc("GET /courses", contentHandler.GetCourses)

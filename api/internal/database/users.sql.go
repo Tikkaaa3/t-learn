@@ -107,6 +107,28 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 	return i, err
 }
 
+const getUserStats = `-- name: GetUserStats :one
+SELECT 
+    u.username,
+    COUNT(tc.id) as completed_tasks
+FROM users u
+LEFT JOIN task_completions tc ON u.id = tc.user_id
+WHERE u.id = $1
+GROUP BY u.username
+`
+
+type GetUserStatsRow struct {
+	Username       string `json:"username"`
+	CompletedTasks int64  `json:"completed_tasks"`
+}
+
+func (q *Queries) GetUserStats(ctx context.Context, id uuid.UUID) (GetUserStatsRow, error) {
+	row := q.db.QueryRowContext(ctx, getUserStats, id)
+	var i GetUserStatsRow
+	err := row.Scan(&i.Username, &i.CompletedTasks)
+	return i, err
+}
+
 const updateAPIKey = `-- name: UpdateAPIKey :one
 UPDATE users 
 SET api_key = $2
