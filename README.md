@@ -1,5 +1,7 @@
 # t-learn Platform
 
+[![Watch the demo](https://img.youtube.com/vi/IJQU1nXh-sI/0.jpg)](https://youtube.com/watch?v=IJQU1nXh-sI)
+
 **t-learn** is a modern, full-stack educational platform designed to deliver interactive coding lessons through a terminal-based interface. The system combines a robust Go backend, PostgreSQL database, and a React-based web terminal frontend to provide an immersive learning experience.
 
 ## 🌟 Features
