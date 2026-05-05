@@ -1,14 +1,18 @@
 # t-learn Platform
 
-![License](https://img.shields.io/github/license/Tikkaaa3/t-learn)
-![Last Commit](https://img.shields.io/github/last-commit/Tikkaaa3/t-learn)
-![Repo Size](https://img.shields.io/github/repo-size/Tikkaaa3/t-learn)
+<p align="center">
 
-![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript)
-![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791?logo=postgresql)
-![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)
+![License](https://img.shields.io/github/license/Tikkaaa3/t-learn?style=for-the-badge)
+![Last Commit](https://img.shields.io/github/last-commit/Tikkaaa3/t-learn?style=for-the-badge)
+![Repo Size](https://img.shields.io/github/repo-size/Tikkaaa3/t-learn?style=for-the-badge)
+
+![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?style=for-the-badge&logo=typescript)
+![React](https://img.shields.io/badge/React-19.2-61DAFB?style=for-the-badge&logo=react)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791?style=for-the-badge&logo=postgresql)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=for-the-badge&logo=docker)
+
+</p>
 
 **t-learn** is a modern, full-stack educational platform designed to deliver interactive coding lessons through a terminal-based interface. The system combines a robust Go backend, PostgreSQL database, and a React-based web terminal frontend to provide an immersive learning experience.
 
