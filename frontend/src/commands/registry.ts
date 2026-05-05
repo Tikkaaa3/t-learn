@@ -1,6 +1,6 @@
 import type { CommandDefinition } from "../types";
 import type { Course, Lesson } from "../api/content";
-import { loginUser, generateApiKey, registerUser } from "../api/auth";
+import { loginUser, generateApiKey, registerUser, getUserStats } from "../api/auth";
 import {
   getCourses,
   getLessons,
@@ -14,7 +14,8 @@ import {
 // --- GLOBAL STATE ---
 interface ShellState {
   user: string | null;
-  path: string[]; // e.g. ["Go Mastery"]
+  path: string[]; // ["courses"] or ["courses", "Rust Basics"]
+  currentCourse: Course | null; // Current course we're in
   cachedCourses: Course[];
   cachedLessons: Lesson[];
 }
@@ -23,6 +24,7 @@ interface ShellState {
 const state: ShellState = {
   user: localStorage.getItem("t_learn_user") || null,
   path: [],
+  currentCourse: null,
   cachedCourses: [],
   cachedLessons: [],
 };
@@ -45,11 +47,10 @@ function resolveId(
 
 // --- EXPORT FOR REACT UI ---
 export const getPrompt = () => {
-  if (state.path.length > 0) {
-    const currentDir = state.path[state.path.length - 1];
-    return `${currentDir} $`;
+  if (state.path.length === 0) {
+    return "$";
   }
-  return "$";
+  return `${state.path.join("/")} $`;
 };
 
 // --- COMMAND DEFINITIONS ---
@@ -67,10 +68,11 @@ const help: CommandDefinition = {
   register <user> <mail> <pass> - Create account
   login <user> <pass>           - Log in
   logout                        - Log out
-  whoami                        - Show current user
+  whoami                        - Show current user and stats
   token                         - Generate CLI API Key
-  courses                       - List available courses
-  lessons <course_name>         - Enter a course
+  ls [courses]                  - List courses or lessons
+  cd <course_name>              - Enter a course
+  cd ..                         - Go back to courses root
   start <lesson_name>           - Start a lesson task
 \`\`\`
 `,
@@ -81,7 +83,7 @@ const help: CommandDefinition = {
 const clear: CommandDefinition = {
   description: "Clear terminal",
   execute: async () => {
-    return { type: "clear", output: "" };
+    return { type: "info", output: "" };
   },
 };
 
@@ -136,18 +138,32 @@ const logout: CommandDefinition = {
 
     // Reset the internal state
     state.user = null;
-    state.path = []; // Optional: Reset path to root
+    state.path = [];
+    state.currentCourse = null;
+    state.cachedCourses = [];
+    state.cachedLessons = [];
 
     return { type: "success", output: "Logged out successfully." };
   },
 };
 
 const whoami: CommandDefinition = {
-  description: "Show current user",
+  description: "Show current user and stats",
   execute: async () => {
-    return state.user
-      ? { type: "success", output: state.user }
-      : { type: "error", output: "Not logged in." };
+    if (!state.user) {
+      return { type: "error", output: "Not logged in." };
+    }
+
+    try {
+      const stats = await getUserStats();
+      return {
+        type: "success",
+        output: `**${stats.username}**\nCompleted tasks: ${stats.completed_tasks}`,
+      };
+    } catch (err: any) {
+      // Fallback if stats endpoint fails
+      return { type: "success", output: state.user };
+    }
   },
 };
 
@@ -171,70 +187,139 @@ const token: CommandDefinition = {
   },
 };
 
-const courses: CommandDefinition = {
-  description: "List available courses",
+const ls: CommandDefinition = {
+  description: "List courses or lessons",
   execute: async () => {
-    try {
-      const courses = await getCourses();
-      state.cachedCourses = courses;
-
-      if (courses.length === 0)
-        return { type: "info", output: "No courses found." };
-
-      const list = courses
-        .map((c) => `- **${c.title}**`) // Bold the title
-        .join("\n");
-
-      return { type: "info", output: `### Available Courses:\n${list}` };
-    } catch (err: any) {
+    // If at root, show hint
+    if (state.path.length === 0) {
       return {
-        type: "error",
-        output: `Failed to fetch courses: ${err.message}`,
+        type: "info",
+        output: "Type 'cd courses' to browse courses.",
       };
     }
+
+    // If we're in courses directory (not in a specific course)
+    if (state.path.length === 1 && state.path[0] === "courses") {
+      try {
+        const courses = await getCourses();
+        state.cachedCourses = courses;
+
+        if (courses.length === 0)
+          return { type: "info", output: "No courses found." };
+
+        const list = courses
+          .map((c) => `📁 **${c.title}**/`)
+          .join("\n");
+
+        return { type: "info", output: `### Courses:\n${list}` };
+      } catch (err: any) {
+        return {
+          type: "error",
+          output: `Failed to fetch courses: ${err.message}`,
+        };
+      }
+    }
+
+    // If we're inside a course, list lessons
+    if (state.currentCourse) {
+      try {
+        const lessons = await getLessons(state.currentCourse.id);
+        state.cachedLessons = lessons;
+
+        if (lessons.length === 0)
+          return { type: "info", output: `No lessons in this course.` };
+
+        const list = lessons
+          .map((l) => {
+            const mark = l.completed ? "✓" : " ";
+            return `[${mark}] 📄 ${l.title}`;
+          })
+          .join("\n");
+
+        return {
+          type: "info",
+          output: `### Lessons in ${state.currentCourse.title}:\n${list}`,
+        };
+      } catch (err: any) {
+        return { type: "error", output: `Failed: ${err.message}` };
+      }
+    }
+
+    return { type: "info", output: "Nothing to list here." };
   },
 };
 
-const lessons: CommandDefinition = {
-  description: "List lessons in a course",
+const cd: CommandDefinition = {
+  description: "Change directory to a course",
   execute: async (args) => {
-    if (args.length < 1)
-      return { type: "error", output: "Usage: lessons <course_name>" };
-
-    const courseQuery = args.join(" "); // Handle "Rust Basics"
-
-    // Ensure cache
-    if (state.cachedCourses.length === 0) {
-      try {
-        state.cachedCourses = await getCourses();
-      } catch (e) {}
+    if (args.length === 0) {
+      return { type: "error", output: "Usage: cd <directory> or cd .." };
     }
 
-    const courseId = resolveId(courseQuery, state.cachedCourses);
-    if (!courseId)
-      return { type: "error", output: `Course '${courseQuery}' not found.` };
+    // cd .. goes back one level
+    if (args[0] === "..") {
+      if (state.path.length === 0) {
+        return { type: "info", output: "Already at root." };
+      }
+      
+      // If we're in a course, go back to courses directory
+      if (state.path.length === 2) {
+        state.path = ["courses"];
+        state.currentCourse = null;
+        state.cachedLessons = [];
+        return { type: "info", output: "Moved to courses directory." };
+      }
+      
+      // If we're in courses directory, go back to root
+      if (state.path.length === 1) {
+        state.path = [];
+        return { type: "info", output: "Moved to root." };
+      }
+      
+      return { type: "info", output: "Moved back." };
+    }
 
-    try {
-      const lessons = await getLessons(courseId);
-      state.cachedLessons = lessons;
+    const target = args.join(" ");
 
-      if (lessons.length === 0)
-        return { type: "info", output: `No lessons in '${courseQuery}'.` };
+    // cd courses (from root)
+    if (target === "courses" && state.path.length === 0) {
+      state.path = ["courses"];
+      return { type: "info", output: "Moved to courses directory. Type 'ls' to see courses." };
+    }
 
-      const list = lessons
-        .map((l) => {
-          const mark = l.completed ? "x" : " "; // x for done, space for todo
-          return `- [${mark}] ${l.title}`;
-        })
-        .join("\n");
+    // cd <course_name> (from courses directory)
+    if (state.path.length === 1 && state.path[0] === "courses") {
+      // Ensure cache
+      if (state.cachedCourses.length === 0) {
+        try {
+          state.cachedCourses = await getCourses();
+        } catch (e) {}
+      }
+
+      const courseId = resolveId(target, state.cachedCourses);
+      if (!courseId)
+        return { type: "error", output: `Course '${target}' not found.` };
+
+      const course = state.cachedCourses.find((c) => c.id === courseId);
+      if (!course)
+        return { type: "error", output: `Course '${target}' not found.` };
+
+      state.currentCourse = course;
+      state.path = ["courses", course.title];
+
+      // Fetch lessons immediately
+      try {
+        const lessons = await getLessons(courseId);
+        state.cachedLessons = lessons;
+      } catch (e) {}
 
       return {
         type: "info",
-        output: `### Lessons in ${courseQuery}:\n${list}`,
+        output: `Entered course: **${course.title}**\nType 'ls' to see lessons.`,
       };
-    } catch (err: any) {
-      return { type: "error", output: `Failed: ${err.message}` };
     }
+
+    return { type: "error", output: `Cannot cd to '${target}' from current location.` };
   },
 };
 
@@ -427,8 +512,8 @@ export const commands: Record<string, CommandDefinition> = {
   logout,
   whoami,
   token,
-  courses,
-  lessons,
+  ls,
+  cd,
   start,
   mkcourse,
   rmcourse,
