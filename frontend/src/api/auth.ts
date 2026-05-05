@@ -46,3 +46,14 @@ export async function registerUser(
     body: JSON.stringify({ username, email, password: pass }),
   });
 }
+
+export interface UserStatsResponse {
+  username: string;
+  completed_tasks: number;
+}
+
+export async function getUserStats(): Promise<UserStatsResponse> {
+  return apiClient<UserStatsResponse>("/auth/stats", {
+    method: "GET",
+  });
+}
