@@ -3,11 +3,16 @@ import type { HistoryLine, LineType } from "../types";
 import { commands, getPrompt } from "../commands/registry";
 
 export const useTerminal = () => {
+  const user = localStorage.getItem("t_learn_user");
+  const welcomeMessage = user
+    ? `Welcome back, **${user}**! Type 'help' to see commands.`
+    : "Welcome to t-learn v1.0.0. Type 'help' to start.";
+
   const [history, setHistory] = useState<HistoryLine[]>([
     {
       id: "init",
       type: "info",
-      content: "Welcome to t-learn v1.0.0. Type 'help' to start.",
+      content: welcomeMessage,
     },
   ]);
 
