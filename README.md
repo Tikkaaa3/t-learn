@@ -2,9 +2,9 @@
 
 <p align="center">
 
-![License](https://img.shields.io/github/license/Tikkaaa3/t-learn?style=for-the-badge)
+![License](https://img.shields.io/github/license/Tikkaaa3/t-learn?style=for-the-badge&cacheSeconds=60)
 ![Last Commit](https://img.shields.io/github/last-commit/Tikkaaa3/t-learn?style=for-the-badge)
-![Repo Size](https://img.shields.io/github/repo-size/Tikkaaa3/t-learn?style=for-the-badge)
+![Repo Size](https://img.shields.io/github/repo-size/Tikkaaa3/t-learn?style=for-the-badge&cacheSeconds=60)
 
 ![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?style=for-the-badge&logo=typescript)
