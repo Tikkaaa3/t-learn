@@ -56,40 +56,22 @@ The platform consists of three main components:
 3. **Web Frontend** (React + TypeScript): Interactive terminal UI with directory-based navigation
 
 ```
-┌──────────────┐      ┌──────────────┐      ┌────────────────────┐
-│    Upload    │ ───▶│   Extract    │ ───▶│    Embed & Build   │
-│ (PDF / Text) │      │  & Chunk     │      │   Semantic Graph   │
-└──────────────┘      └──────────────┘      └────────────────────┘
-                                                     │
-                                                     │
-                                                     ▼
-                                              ┌──────────────┐
-                                              │    Query     │
-                                              └──────┬───────┘
-                                                     │
-                          ┌──────────────────────────┼──────────────────────────┐
-                          │                          │                          │
-                          ▼                          ▼                          ▼
-                    keyword                      semantic                 hybrid / graph
-
-                                                     │
-                                                     ▼
-                                       ┌────────────────────┐
-                                       │   Graph Memory     │
-                                       │   (Activation)     │
-                                       └────────┬───────────┘
-                                                │
-                                                ▼
-                                       ┌────────────────────┐
-                                       │    Build RAG       │
-                                       │     Prompt         │
-                                       └────────┬───────────┘
-                                                │
-                                                ▼
-                                       ┌────────────────────┐
-                                       │     Generate       │
-                                       │      Answer        │
-                                       └────────────────────┘
+┌─────────────────┐
+│  Web Frontend   │  React + TypeScript + Vite
+│  (Terminal UI)  │  Terminal emulation with Markdown rendering
+└────────┬────────┘
+         │ HTTPS/REST
+         ▼
+┌─────────────────┐
+│   Backend API   │  Go + net/http
+│  (Port 8080)    │  JWT Auth + API Keys
+└────────┬────────┘
+         │ SQL
+         ▼
+┌─────────────────┐
+│   PostgreSQL    │  Persistent storage
+│  (Port 5432)    │  SQLC + Goose migrations
+└─────────────────┘
 ```
 
 ## 📁 Directory Structure
